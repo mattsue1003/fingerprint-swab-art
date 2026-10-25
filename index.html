@@ -513,7 +513,9 @@ function autoText(st,first){ const gs=groupsOf(st.els); if (!gs.length) return '
     return `${i?'再':''}用黑色簽字筆畫 ${n} 筆`; });
   let t=parts.join('；')+'。'; if (first && st.els.some(e=>e.k!=='p')) t+='顏料沾薄薄一層就好，先在報紙上試一下。'; if (st.els.some(e=>e.k==='p') && st.els[0].k==='p' && !first) t='等顏料乾了，'+t; return t; }
 const stTitle=(st)=>st.title||autoTitle(st);
-const stText=(st,k)=>st.text||autoText(st,k===0);
+function wipesBefore(L,k){ const out=[]; let last=null; L.steps.slice(0,k).forEach(s=>s.els.forEach(e=>{ if (e.k!=='f') return; if (last && e.c!==last) out.push(last); last=e.c; })); return out; }
+function needsWipe(L,k){ let last=null; for (let i=0;i<=k;i++) for (const e of L.steps[i].els){ if (e.k!=='f') continue; if (i===k && last && e.c!==last) return true; last=e.c; } return false; }
+const stText=(st,k,L)=>{ const t=st.text||autoText(st,k===0); return L && needsWipe(L,k) && !t.includes('濕紙巾') ? t+'換顏色之前，記得先用濕紙巾把手指擦乾淨，顏色才不會混在一起。' : t; };
 function stTag(st){ const gs=groupsOf(st.els); return uniq(gs.map(g=>g.k==='p'?'簽字筆':`${cname(g.c)}${g.k==='f'?'指紋':'點點'}`)).slice(0,3).join('・')||'—'; }
 function materials(L){ const els=L.steps.flatMap(s=>s.els), m=[]; const cs=uniq(els.filter(e=>e.k!=='p').map(e=>cname(e.c)));
   if (els.some(e=>e.k==='f')) m.push('手指（印台或廣告顏料、濕紙巾）'); if (els.some(e=>e.k==='s')) m.push(`棉花棒 ${Math.max(1,uniq(els.filter(e=>e.k==='s').map(e=>e.c)).length)} 支以上（一個顏色一支）`);
@@ -694,14 +696,16 @@ class Player{
     this.D=this.tray?40:22; this.TR=this.tray?170:0; this.SW=this.PW+2*this.D; this.SH=this.PH+2*this.D+this.TR; this.ps=this.px/this.PW;
     this.paper=mk(Math.round(this.PW*this.ps),Math.round(this.PH*this.ps)); this.n=this.L.steps.length;
     const U=uniq(this.L.steps.flatMap(s=>s.els).filter(e=>e.k!=='p').map(e=>e.c)).slice(0,7); if (!U.length) U.push(GOLD);
-    const pw=Math.min(150,(this.SW-200)/U.length-18); this.pads=U.map((c,j)=>({c,w:pw,x:60+pw/2+j*(pw+18)+((this.SW-200)-(U.length*(pw+18)))/2,y:this.PH+2*this.D+this.TR*.38}));
-    this.rest={x:this.SW-80,y:this.PH+2*this.D+this.TR*.38}; this.reset(0); }
+    const ty=this.PH+2*this.D+this.TR*.38, pw=Math.min(140,(this.SW-330)/U.length-16); this.pads=U.map((c,j)=>({c,w:pw,x:165+pw/2+j*(pw+16)+((this.SW-330)-(U.length*(pw+16)))/2,y:ty}));
+    this.rest={x:80,y:ty}; this.wipe={x:this.SW-92,y:ty}; this.smears=[]; this.reset(0); }
   get asp(){ return this.SH/this.SW; }
   get step(){ return this.L.steps[this.k]; }
   get progress(){ return this.done?1:this.total?clamp(this.t/this.total):0; }
   commit(e){ if (e._done) return; const g=this.paper.getContext('2d'); g.save(); paperPath(g,this.L.paper,this.PW,this.PH,this.ps); g.clip(); g.globalCompositeOperation='multiply'; paintEl(g,e,this.ps); g.restore(); e._done=true; }
   clear(){ paperBase(this.paper,this.L.paper); this.L.steps.forEach(s=>s.els.forEach(e=>e._done=false)); }
-  reset(k){ this.k=clamp(k|0,0,Math.max(0,this.n-1)); this.clear(); for (let i=0;i<this.k;i++) this.L.steps[i].els.forEach(e=>this.commit(e)); this.build(); }
+  lastFinger(k){ for (let i=k-1;i>=0;i--){ const f=this.L.steps[i].els.filter(e=>e.k==='f'); if (f.length) return f.at(-1).c; } return null; }
+  lastSwab(k){ for (let i=k-1;i>=0;i--){ const f=this.L.steps[i].els.filter(e=>e.k==='s'); if (f.length) return f.at(-1).c; } return null; }
+  reset(k){ this.k=clamp(k|0,0,Math.max(0,this.n-1)); this.clear(); for (let i=0;i<this.k;i++) this.L.steps[i].els.forEach(e=>this.commit(e)); this.smears=wipesBefore(this.L,this.k); this.build(); }
   upTo(k){ this.k=clamp(k|0,0,Math.max(0,this.n-1)); this.clear(); for (let i=0;i<=this.k;i++) this.L.steps[i].els.forEach(e=>this.commit(e)); this.segs=[]; this.total=0; this.done=true; }
   renderAll(){ this.upTo(this.n-1); }
   finish(){ const st=this.step; if (st) st.els.forEach(e=>this.commit(e)); this.t=this.total; this.si=this.segs.length; this.done=true; }
@@ -711,20 +715,26 @@ class Player{
   build(){ const st=this.step; this.segs=[]; this.t=0; this.si=0; this.done=false; let t=0;
     if (!st||!st.els.length){ this.total=0; this.done=true; return; }
     const add=(type,dur,o)=>{ this.segs.push(Object.assign({type,start:t,end:t+dur},o)); t+=dur; };
-    const e0=st.els[0]; let pos=this.tray?(e0.k==='p'?this.rest:this.padOf(e0.c)):(e0.k==='p'?this.sp(...e0.pts[0]):this.sp(e0.x,e0.y)), prev=null, dips=0;
+    const e0=st.els[0]; let pos=this.tray?(e0.k==='p'?this.rest:this.padOf(e0.c)):(e0.k==='p'?this.sp(...e0.pts[0]):this.sp(e0.x,e0.y)), prev=null, dips=0, lastF=this.lastFinger(this.k), lastS=this.lastSwab(this.k);
+    const WIPE='換顏色前，先用濕紙巾把手指擦乾淨！', SWAP='換一個顏色，就換一支新的棉花棒！';
     const mv=(to,e,fast)=>{ const d=Math.hypot(to.x-pos.x,to.y-pos.y); if (d>1) add('move',clamp((fast?.14:.24)+d/(fast?2600:1800),fast?.16:.28,.9),{from:pos,to,e}); pos=to; };
     st.els.forEach(e=>{
       if (e.k==='p'){ mv(this.sp(...e.pts[0]),e); add('draw',clamp(.2+e._len/650,.25,2.6),{e}); const l=e.pts.at(-1); pos=this.sp(l[0],l[1]); prev='p'; return; }
-      const key=e.k+e.c; if (this.tray && (key!==prev || (e.k==='s'&&dips>=7))){ mv(this.padOf(e.c),e); add('dip',e.k==='f'?.45:.32,{at:pos,e}); dips=0; }
+      const key=e.k+e.c;
+      if (this.tray && e.k==='f' && lastF && e.c!==lastF){ const d=Math.hypot(this.wipe.x-pos.x,this.wipe.y-pos.y); add('move',clamp(.3+d/1700,.3,.9),{from:pos,to:this.wipe,e,note:WIPE}); pos=this.wipe; add('wipe',1.3,{at:pos,e,from:lastF,note:WIPE}); prev=null; }
+      const swap=this.tray && e.k==='s' && lastS && e.c!==lastS && key!==prev;
+      if (e.k==='f') lastF=e.c; else lastS=e.c;
+      if (this.tray && (key!==prev || (e.k==='s'&&dips>=7))){ const d=Math.hypot(this.padOf(e.c).x-pos.x,this.padOf(e.c).y-pos.y); if (d>1) add('move',clamp(.3+d/1700,.3,.9),{from:pos,to:this.padOf(e.c),e,note:swap?SWAP:null}); pos=this.padOf(e.c); add('dip',e.k==='f'?.45:swap?.9:.32,{at:pos,e,note:swap?SWAP:null}); dips=0; }
       mv(this.sp(e.x,e.y),e,e.k==='s'); add(e.k==='f'?'press':'tap',e.k==='f'?.6:.36,{at:pos,e}); dips++; prev=key; });
     this.total=t; }
-  update(dt){ if (this.done) return; this.t+=dt*this.speed; while (this.si<this.segs.length && this.t>=this.segs[this.si].end){ const sg=this.segs[this.si]; if (sg.type==='press'||sg.type==='tap'||sg.type==='draw') this.commit(sg.e); this.si++; } if (this.si>=this.segs.length) this.finish(); }
+  update(dt){ if (this.done) return; this.t+=dt*this.speed; while (this.si<this.segs.length && this.t>=this.segs[this.si].end){ const sg=this.segs[this.si]; if (sg.type==='press'||sg.type==='tap'||sg.type==='draw') this.commit(sg.e); if (sg.type==='wipe') this.smears.push(sg.from); this.si++; } if (this.si>=this.segs.length) this.finish(); }
   pose(){ const S=this.segs, st=this.step;
     if (!S.length){ if (!st||!st.els.length||this.mode!=='play') return null; const e=st.els[0]; const p=this.tray?(e.k==='p'?this.rest:this.padOf(e.c)):(e.k==='p'?this.sp(...e.pts[0]):this.sp(e.x,e.y)); return {x:p.x,y:p.y,lift:LIFT,e,ink:0}; }
     if (this.done||this.si>=S.length){ const sg=S.at(-1); const l=sg.e.k==='p'?this.sp(...sg.e.pts.at(-1)):sg.at; return {x:l.x,y:l.y,lift:LIFT,e:sg.e,ink:0}; }
     const sg=S[this.si], p=clamp((this.t-sg.start)/(sg.end-sg.start));
     if (sg.type==='move'){ const q=ease(p); return {x:sg.from.x+(sg.to.x-sg.from.x)*q,y:sg.from.y+(sg.to.y-sg.from.y)*q,lift:LIFT,e:sg.e,ink:0}; }
     if (sg.type==='draw'){ const [x,y]=penAt(sg.e,p); const q=this.sp(x,y); return {x:q.x,y:q.y,lift:p<.06?LIFT*(1-p/.06):0,e:sg.e,ink:0,fr:p}; }
+    if (sg.type==='wipe'){ const l=p<.12?LIFT*(1-p/.12):p>.88?LIFT*(p-.88)/.12:0; return {x:sg.at.x+(p>.12&&p<.88?Math.sin((p-.12)/.76*TAU*3)*30:0),y:sg.at.y,lift:l,e:sg.e,ink:0}; }
     const lift=p<.35?LIFT*(1-ease(p/.35)):p<.6?0:LIFT*ease((p-.6)/.4);
     return {x:sg.at.x,y:sg.at.y,lift,e:sg.e,ink:(sg.type!=='dip'&&p>.33)?clamp((p-.33)/.12):0}; }
   drawFit(g,x,y,w,h){ const W=Math.min(w,h/this.asp), H=W*this.asp, ox=x+(w-W)/2, oy=y+(h-H)/2; this.draw(g,ox,oy,W); return {x:ox,y:oy,w:W,h:H,k:W/this.SW}; }
@@ -749,8 +759,16 @@ class Player{
     if (this.tray){ const ty=this.PH+2*D-12; g.fillStyle='#c4a274'; g.beginPath(); g.roundRect(18,ty,this.SW-36,this.TR-6,18); g.fill(); g.strokeStyle='rgba(80,50,20,.25)'; g.lineWidth=3; g.stroke();
       this.pads.forEach(p=>{ g.fillStyle='#fff8ee'; g.beginPath(); g.ellipse(p.x,p.y,p.w/2+6,40,0,0,TAU); g.fill(); g.fillStyle=p.c; g.beginPath(); g.ellipse(p.x,p.y,p.w/2-10,28,0,0,TAU); g.fill();
         g.fillStyle='rgba(255,255,255,.3)'; g.beginPath(); g.ellipse(p.x-p.w*.15,p.y-10,p.w*.16,6,-.1,0,TAU); g.fill(); g.fillStyle='#3b2a17'; g.font=`500 24px ${FONT}`; g.textAlign='center'; g.fillText(cname(p.c),p.x,p.y+72); g.textAlign='left'; });
-      g.fillStyle='rgba(70,45,20,.18)'; g.beginPath(); g.roundRect(this.rest.x-36,this.rest.y-40,72,80,14); g.fill(); g.fillStyle='#3b2a17'; g.font=`500 22px ${FONT}`; g.textAlign='center'; g.fillText('濕紙巾',this.rest.x,this.rest.y+72); g.textAlign='left'; }
+      g.fillStyle='rgba(70,45,20,.18)'; g.beginPath(); g.roundRect(this.rest.x-36,this.rest.y-40,72,80,14); g.fill(); g.fillStyle='#3b2a17'; g.font=`500 22px ${FONT}`; g.textAlign='center'; g.fillText('簽字筆',this.rest.x,this.rest.y+72);
+      const w=this.wipe; g.save(); g.translate(w.x,w.y); g.rotate(-.06); g.fillStyle='rgba(60,40,20,.18)'; g.beginPath(); g.roundRect(-58,-44,120,92,10); g.fill(); g.fillStyle='#f2f8fc'; g.beginPath(); g.roundRect(-62,-50,120,92,10); g.fill();
+      g.strokeStyle='rgba(90,140,170,.35)'; g.lineWidth=2; g.beginPath(); g.moveTo(-62,-4); g.lineTo(58,-4); g.stroke(); g.fillStyle='rgba(90,160,210,.25)'; [[-40,-30],[30,-34],[-10,22],[40,24],[-46,20]].forEach(([a,b])=>{ g.beginPath(); g.arc(a,b,4,0,TAU); g.fill(); });
+      this.smears.slice(-6).forEach((c,i)=>{ g.fillStyle=c; g.globalAlpha=.6; g.beginPath(); g.ellipse(-30+(i%3)*28,-26+Math.floor(i/3)*40,24,11,(i%2?.3:-.3),0,TAU); g.fill(); g.globalAlpha=1; });
+      g.restore(); g.fillStyle='#3b2a17'; g.fillText('濕紙巾',w.x,w.y+72); g.textAlign='left'; }
     if (Pz) drawTool(g,Pz);
+    const sgN=this.tray&&this.mode==='play'&&!this.done?this.segs[this.si]:null;
+    if (sgN && sgN.note){ g.font=`700 38px ${FONT}`; const tw=g.measureText(sgN.note).width, bw=Math.min(this.SW-60,tw+56), bh=76, bx=Math.max(30,Math.min(this.SW-30-bw,(sgN.type==='wipe'||sgN.to===this.wipe?this.wipe.x:this.SW/2)-bw/2-(sgN.type==='wipe'||sgN.to===this.wipe?bw*.35:0))), by=this.PH+2*D-bh-40;
+      g.fillStyle='rgba(18,52,59,.92)'; g.beginPath(); g.roundRect(bx,by,bw,bh,16); g.fill(); g.beginPath(); const tx=clamp(sgN.type==='wipe'||sgN.to===this.wipe?this.wipe.x:this.SW/2,bx+30,bx+bw-30); g.moveTo(tx-14,by+bh); g.lineTo(tx+14,by+bh); g.lineTo(tx,by+bh+18); g.fill();
+      g.fillStyle='#ffffff'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(sgN.note,bx+bw/2,by+bh/2+1,bw-30); g.textAlign='left'; g.textBaseline='alphabetic'; }
     g.restore(); }
 }
 function drawTool(g,P){ const e=P.e, lift=P.lift, x=P.x, y=P.y-lift*.55;
@@ -785,7 +803,7 @@ function estTotal(L){ const P=new Player(100); P.load(L); let t=0; for (let i=0;
 let lastK=-1, lastDone=null, lastPlaying=null;
 function syncAll(){ lastK=-1; lastDone=null; syncCap(); syncPlay(); }
 function syncCap(){ const st=PL.step; if (!st) return; if (lastK!==PL.k){ lastK=PL.k;
-    $('#pNo').textContent=PL.k+1; $('#pTot').textContent=PL.n; $('#pTitle').textContent=stTitle(st); $('#pText').textContent=stText(st,PL.k); $('#pTag').textContent=stTag(st);
+    $('#pNo').textContent=PL.k+1; $('#pTot').textContent=PL.n; $('#pTitle').textContent=stTitle(st); $('#pText').textContent=stText(st,PL.k,PL.L); $('#pTag').textContent=stTag(st);
     if (st.els[0]) elIcon($('#pInk'),st.els.find(e=>e.k!=='p')||st.els[0]);
     $$('#pSteps li').forEach((li,i)=>{ li.classList.toggle('cur',i===PL.k); li.classList.toggle('done',i<PL.k); }); const cur=$('#pSteps li.cur'); if (cur){ const ol=$('#pSteps'); ol.scrollTop=cur.offsetTop-ol.offsetTop-60; } }
   $('#pBar').style.width=((PL.k+PL.progress)/Math.max(1,PL.n)*100).toFixed(1)+'%';
@@ -1024,7 +1042,7 @@ $('#dlPdf').onclick=async()=>{ const L=PS.lesson; await fontsReady(); toast('正
     g.fillStyle='#f3ecdf'; g.beginPath(); g.roundRect(x0,y0,cw2,ts+20,16); g.fill(); b=fitBox(P,x0,y0+10,cw2,ts); drawPaperImg(g,P,b);
     g.save(); g.translate(b.x,b.y); g.scale(b.s,b.s); g.setLineDash([8,6]); g.strokeStyle='#e8552d'; g.lineWidth=3/b.s; steps[k].els.forEach(e=>{ outlineEl(g,e,1,1.15); g.stroke(); }); g.restore();
     g.fillStyle='#e8552d'; g.beginPath(); g.arc(x0+30,y0+32,22,0,TAU); g.fill(); g.fillStyle='#fff'; g.font=`700 24px ${FONT}`; g.textAlign='center'; g.fillText(String(k+1),x0+30,y0+41); g.textAlign='left';
-    g.fillStyle='#12343b'; g.font=`700 32px ${DISPLAY}`; g.fillText(wrapText(g,stTitle(steps[k]),cw2,1)[0],x0,y0+ts+66); g.font=`400 20px ${FONT}`; g.fillStyle='#33484c'; wrapText(g,stText(steps[k],k),cw2,4).forEach((ln,i)=>g.fillText(ln,x0,y0+ts+100+i*30)); }
+    g.fillStyle='#12343b'; g.font=`700 32px ${DISPLAY}`; g.fillText(wrapText(g,stTitle(steps[k]),cw2,1)[0],x0,y0+ts+66); g.font=`400 20px ${FONT}`; g.fillStyle='#33484c'; wrapText(g,stText(steps[k],k,P.L),cw2,4).forEach((ln,i)=>g.fillText(ln,x0,y0+ts+100+i*30)); }
   // 底稿
   c=mk(W,H); g=c.getContext('2d'); pages.push(c); pageHead(g,W,L,`指紋棉花棒學習單　${nP} / ${nP}　｜　照著蓋的底稿：虛線圈是指紋、小圈是點點、灰線是要畫的線`);
   b=fitBox(P,70,210,W-140,H-330); g.save(); g.translate(b.x,b.y); g.strokeStyle='#8f9895'; g.lineWidth=2.5; paperPath(g,L.paper,b.W,b.H); g.stroke(); g.scale(b.s,b.s);
@@ -1057,7 +1075,7 @@ function vidFrame(g,W,H,P,info){ const L=info.lesson; g.fillStyle='#f3ead9'; g.f
     g.fillStyle='#fff'; g.font=`700 ${Math.round(big*.6)}px ${DISPLAY}`; g.fillText(label,px+big*.35,y); g.font=`700 ${Math.round(big*.42)}px ${DISPLAY}`; g.fillText(small,px+big*.35+lw,y);
     const tag=stTag(st); g.font=`500 ${Math.round(body*.68)}px ${FONT}`; const tw=Math.min(g.measureText(tag).width,pw-bw-60), th=body*1.1; g.fillStyle='#dcefee'; g.beginPath(); g.roundRect(px+bw+16,y-th*.78,tw+28,th,th/2); g.fill(); g.fillStyle='#01646f'; g.fillText(tag,px+bw+30,y-th*.08,tw);
     y+=big*1.45; g.fillStyle='#12343b'; g.font=`700 ${big}px ${DISPLAY}`; for (const ln of wrapText(g,stTitle(st),pw,2)){ g.fillText(ln,px,y); y+=big*1.3; }
-    y+=body*.3; g.fillStyle='#33484c'; g.font=`400 ${body}px ${FONT}`; for (const ln of wrapText(g,stText(st,P.k),pw,maxLines)){ g.fillText(ln,px,y); y+=body*1.65; }
+    y+=body*.3; g.fillStyle='#33484c'; g.font=`400 ${body}px ${FONT}`; for (const ln of wrapText(g,stText(st,P.k,P.L),pw,maxLines)){ g.fillText(ln,px,y); y+=body*1.65; }
     const dotsY=W>H?H*.9:H>W?H*.96:H*.97, dw=Math.min(28,pw/N); for (let i=0;i<N;i++){ g.fillStyle=i<P.k?'#028090':i===P.k?'#e8552d':'rgba(18,52,59,.15)'; g.beginPath(); g.arc(px+dw*i+dw/2,dotsY,Math.min(8,dw*.32),0,TAU); g.fill(); } }
   if (info.sign){ g.fillStyle='#7d8d8f'; g.font=`500 ${Math.round(body*.62)}px ${FONT}`; g.textAlign='right'; g.fillText(info.sign,W-H*.04,H-H*.03); g.textAlign='left'; } }
 let recAbort=false;
