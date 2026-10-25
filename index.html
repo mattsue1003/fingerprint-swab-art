@@ -726,11 +726,13 @@ class Player{
       if (e.k==='f') lastF=e.c; else lastS=e.c;
       if (this.tray && (key!==prev || (e.k==='s'&&dips>=7))){ const d=Math.hypot(this.padOf(e.c).x-pos.x,this.padOf(e.c).y-pos.y); if (d>1) add('move',clamp(.3+d/1700,.3,.9),{from:pos,to:this.padOf(e.c),e,note:swap?SWAP:null}); pos=this.padOf(e.c); add('dip',e.k==='f'?.45:swap?.9:.32,{at:pos,e,note:swap?SWAP:null}); dips=0; }
       mv(this.sp(e.x,e.y),e,e.k==='s'); add(e.k==='f'?'press':'tap',e.k==='f'?.6:.36,{at:pos,e}); dips++; prev=key; });
+    if (this.tray){ const el=st.els.at(-1), park=this.parkOf(el); mv(park,el); add('park',.01,{at:park,e:el}); }
     this.total=t; }
+  parkOf(e){ return e.k==='p'?this.rest:this.padOf(e.c); }
   update(dt){ if (this.done) return; this.t+=dt*this.speed; while (this.si<this.segs.length && this.t>=this.segs[this.si].end){ const sg=this.segs[this.si]; if (sg.type==='press'||sg.type==='tap'||sg.type==='draw') this.commit(sg.e); if (sg.type==='wipe') this.smears.push(sg.from); this.si++; } if (this.si>=this.segs.length) this.finish(); }
   pose(){ const S=this.segs, st=this.step;
     if (!S.length){ if (!st||!st.els.length||this.mode!=='play') return null; const e=st.els[0]; const p=this.tray?(e.k==='p'?this.rest:this.padOf(e.c)):(e.k==='p'?this.sp(...e.pts[0]):this.sp(e.x,e.y)); return {x:p.x,y:p.y,lift:LIFT,e,ink:0}; }
-    if (this.done||this.si>=S.length){ const sg=S.at(-1); const l=sg.e.k==='p'?this.sp(...sg.e.pts.at(-1)):sg.at; return {x:l.x,y:l.y,lift:LIFT,e:sg.e,ink:0}; }
+    if (this.done||this.si>=S.length){ if (!this.tray) return null; const e=S.at(-1).e, l=this.parkOf(e); return {x:l.x,y:l.y,lift:LIFT,e,ink:0}; }
     const sg=S[this.si], p=clamp((this.t-sg.start)/(sg.end-sg.start));
     if (sg.type==='move'){ const q=ease(p); return {x:sg.from.x+(sg.to.x-sg.from.x)*q,y:sg.from.y+(sg.to.y-sg.from.y)*q,lift:LIFT,e:sg.e,ink:0}; }
     if (sg.type==='draw'){ const [x,y]=penAt(sg.e,p); const q=this.sp(x,y); return {x:q.x,y:q.y,lift:p<.06?LIFT*(1-p/.06):0,e:sg.e,ink:0,fr:p}; }
