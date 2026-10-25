@@ -185,8 +185,8 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .ed-grid{display:grid;grid-template-columns:300px minmax(0,1fr) 290px;gap:16px;align-items:start}
 .ed-tools .blk{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
 .ed-tools .blk:first-child{border-top:0;margin-top:0;padding-top:0}
-.tools{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-.tools button{display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:6px 2px;cursor:pointer;font-size:13px;min-height:58px}
+.tools{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+.tools button{display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:6px 0;cursor:pointer;font-size:13px;min-height:58px;white-space:nowrap}
 .tools button span{font-size:22px;line-height:1.1}
 .tools button[aria-pressed="true"]{border-color:var(--hot);background:var(--hot-soft);box-shadow:0 0 0 2px var(--hot)}
 .paints{display:flex;flex-wrap:wrap;gap:8px}
@@ -373,25 +373,32 @@ footer{margin-top:40px;color:var(--muted);font-size:13px;text-align:center}
           <button data-t="f" aria-pressed="true"><span>👆</span>指紋</button>
           <button data-t="s"><span>◉</span>棉花棒</button>
           <button data-t="p"><span>✏️</span>簽字筆</button>
+          <button data-t="h"><span>🔁</span>排列</button>
           <button data-t="x"><span>⌫</span>擦掉</button>
         </div>
         <p class="muted" style="font-size:13px;margin:8px 0 0" id="eToolTip"></p>
         <div id="eSizeBox"><label class="f" id="eSizeLbl">大小</label><div class="seg full" id="eSize"></div></div>
       </div>
+      <div class="blk" id="hBlk" hidden>
+        <h3>排列：先看再放</h3>
+        <p class="muted" style="font-size:13px;margin:0 0 6px">紙上淡淡的就是預覽，橘色十字是中心。點一下紙或拖曳可以移動位置，調好了再按「放到紙上」。</p>
+        <label class="f">用什麼排</label>
+        <div class="seg full" id="hWith"><button data-v="f">👆 指紋</button><button data-v="s">◉ 棉花棒</button></div>
+        <label class="f">排成什麼樣子</label>
+        <div class="seg full" id="hKind"><button data-v="ring">⭘ 一圈</button><button data-v="row">⋯ 一排</button><button data-v="grid">⠿ 格子</button><button data-v="burst">✺ 放射</button></div>
+        <label class="f" for="hN"><span id="hNL"></span> <b id="hNV"></b></label><input type="range" id="hN" min="2" max="36" step="1">
+        <div id="hMBox"><label class="f" for="hM"><span id="hML"></span> <b id="hMV"></b></label><input type="range" id="hM" min="1" max="10" step="1"></div>
+        <label class="f" for="hR"><span id="hRL"></span> <b id="hRV"></b></label><input type="range" id="hR" min="30" max="460" step="5">
+        <div id="hDirBox"><label class="f">方向</label><div class="seg full" id="hDir"><button data-v="h">橫的</button><button data-v="v">直的</button><button data-v="d">斜的</button></div></div>
+        <label class="chk" id="hOutL"><input type="checkbox" id="hOut">指紋的上端朝外（像花瓣）</label>
+        <label class="chk"><input type="checkbox" id="hAlt">兩種顏色輪流</label>
+        <div id="hC2Box" hidden><p class="muted" style="font-size:13px;margin:0 0 6px">第二個顏色（第一個顏色在上面「顏料」選）：</p><div class="paints" id="hC2"></div></div>
+        <div class="row" style="margin-top:12px"><button class="btn primary" id="hAdd">✓ 放到紙上</button><button class="btn sm" id="hCenter">移回正中間</button></div>
+      </div>
       <div class="blk" id="ePaintBlk">
         <h3>顏料</h3>
         <div class="paints" id="ePaints"></div>
         <p class="muted" style="font-size:13px;margin:6px 0 0" id="eColorName"></p>
-      </div>
-      <div class="blk">
-        <h3>排列小幫手</h3>
-        <p class="muted" style="font-size:13px;margin:0 0 6px">用目前的工具和顏色，一次排好很多個。中心是你最後點的地方。</p>
-        <select id="hShape" aria-label="排法"><option value="ring">圍成一圈</option><option value="row">排成一排</option><option value="grid">排成格子</option><option value="burst">放射煙火</option></select>
-        <label class="f" for="hN">個數 <b id="hNV"></b></label><input type="range" id="hN" min="2" max="36" step="1" value="8">
-        <label class="f" for="hR">範圍 <b id="hRV"></b></label><input type="range" id="hR" min="40" max="450" step="10" value="150">
-        <label class="chk" id="hOutL"><input type="checkbox" id="hOut" checked>指紋的上端朝外</label>
-        <label class="chk"><input type="checkbox" id="hAlt">兩種顏色輪流（第二色＝上一個用過的顏色）</label>
-        <button class="btn sm primary" id="hAdd" style="margin-top:8px">＋ 加到這一步</button>
       </div>
     </div>
     <div class="ed-center">
@@ -506,8 +513,11 @@ function normL(L){ const o=Object.assign({v:2,id:'',title:'我的指紋作品',s
   if (!o.steps.length) o.steps=[{title:'',text:'',els:[]}]; return o; }
 function groupsOf(els){ const gs=[]; els.forEach(e=>{ const key=e.k==='p'?'p':e.k+e.c; const last=gs.at(-1); if (last && last.key===key) last.list.push(e); else gs.push({key,k:e.k,c:e.c,list:[e]}); }); return gs; }
 function autoTitle(st){ const ks=uniq(st.els.map(e=>e.k)); if (!ks.length) return '空白的一步'; if (ks.length>1) return ks.map(k=>({f:'蓋指紋',s:'點點點',p:'畫線條'})[k]).join('＋'); return ({f:'蓋指紋',s:'用棉花棒點點',p:'用簽字筆畫上細節'})[ks[0]]; }
-function autoText(st,first){ const gs=groupsOf(st.els); if (!gs.length) return '這一步還沒有內容。';
+function mergeAlt(gs){ const out=[]; for (let i=0;i<gs.length;){ let j=i; while (j<gs.length && gs[j].k===gs[i].k && gs[j].k!=='p' && gs[j].list.length===1) j++;
+    if (j-i>=3){ const run=gs.slice(i,j); out.push({k:gs[i].k,alt:uniq(run.map(g=>g.c)),list:run.flatMap(g=>g.list)}); i=j; } else { out.push(gs[i]); i++; } } return out; }
+function autoText(st,first){ const gs=mergeAlt(groupsOf(st.els)); if (!gs.length) return '這一步還沒有內容。';
   const parts=gs.map((g,i)=>{ const n=g.list.length;
+    if (g.alt){ const cs=g.alt.map(cname); if (g.k==='f') return `${i?'再':''}${cs.length===2?`用兩根手指，一根沾${cs[0]}、一根沾${cs[1]}`:`用${fingerName(g.list[0].s)}，${cs.join('、')}`}，輪流蓋 ${n} 個指紋`; return `${i?'再':''}準備 ${cs.length} 支棉花棒，分別沾${cs.join('、')}，輪流點 ${n} 個${swabName(g.list[0].s)}`; }
     if (g.k==='f') return `${i?'再':''}用${fingerName(g.list[0].s)}沾${cname(g.c)}，蓋 ${n} 個指紋`;
     if (g.k==='s') return `${i?'再':''}用棉花棒沾${cname(g.c)}，點 ${n} 個${swabName(g.list[0].s)}`;
     return `${i?'再':''}用黑色簽字筆畫 ${n} 筆`; });
@@ -916,17 +926,17 @@ $('#gHint').onclick=()=>{ const fb=$('#gFb'); fb.hidden=false; fb.className='fb'
 
 /* ==================== 老師設計 ==================== */
 const EP=new Player(900,{tray:false}); EP.mode='edit'; EP.hl=false;
-const E={L:null,k:0,tool:'f',color:RED,prevColor:BL,size:{f:46,s:16,p:7},last:null,drag:null,undo:[],playing:false,back:0};
+const E={L:null,k:0,tool:'f',color:RED,prevColor:BL,size:{f:46,s:16,p:7},last:null,drag:null,undo:[],playing:false,back:0,h:{with:'f',kind:'ring',n:8,m:3,R:150,dir:'h',out:true,alt:false,c2:GOLD,c:null},hDrag:false};
 const SIZES={f:[['小指',28],['食指',46],['大拇指',62]],s:[['小點',11],['中點',16],['大點',24]],p:[['細',5],['中',7],['粗',11]]};
-const TIPS={f:'點一下就蓋一個指紋；按住往某個方向拖，指紋的上端就朝那個方向。',s:'點一下點一個點；按住拖曳可以一路點下去。',p:'按住拖曳畫線，放開就是一筆。',x:'點一下這一步裡的指紋、點點或線條，就會擦掉。'};
+const TIPS={f:'點一下就蓋一個指紋；按住往某個方向拖，指紋的上端就朝那個方向。',s:'點一下點一個點；按住拖曳可以一路點下去。',p:'按住拖曳畫線，放開就是一筆。',x:'點一下這一步裡的指紋、點點或線條，就會擦掉。',h:'一次排好很多個：紙上先出現淡淡的預覽，滿意了再放上去。'};
 function buildEdTools(){ const pb=$('#ePaints'); pb.innerHTML=''; PAINTS.forEach(([c,n])=>{ const b=document.createElement('button'); b.className='paint'; b.style.background=c; b.title=n; b.setAttribute('aria-label',n); b.dataset.c=c; b.onclick=()=>{ if (c!==E.color) E.prevColor=E.color; E.color=c; syncTools(); }; pb.appendChild(b); }); }
 function syncTools(){ $$('#eTools button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===E.tool)); $('#eToolTip').textContent=TIPS[E.tool];
-  $('#eSizeBox').hidden=E.tool==='x'; $('#ePaintBlk').style.opacity=E.tool==='f'||E.tool==='s'?1:.45;
-  if (E.tool!=='x'){ $('#eSizeLbl').textContent=E.tool==='f'?'用哪一根手指':E.tool==='s'?'點點大小':'線條粗細'; const box=$('#eSize'); box.innerHTML=''; SIZES[E.tool].forEach(([n,v])=>{ const b=document.createElement('button'); b.textContent=n; b.setAttribute('aria-pressed',E.size[E.tool]===v); b.onclick=()=>{ E.size[E.tool]=v; syncTools(); }; box.appendChild(b); }); }
+  const sk=E.tool==='h'?E.h.with:E.tool; $('#eSizeBox').hidden=E.tool==='x'; $('#ePaintBlk').style.opacity=['f','s','h'].includes(E.tool)?1:.45; $('#hBlk').hidden=E.tool!=='h';
+  if (E.tool!=='x'){ $('#eSizeLbl').textContent=sk==='f'?'用哪一根手指':sk==='s'?'點點大小':'線條粗細'; const box=$('#eSize'); box.innerHTML=''; SIZES[sk].forEach(([n,v])=>{ const b=document.createElement('button'); b.textContent=n; b.setAttribute('aria-pressed',E.size[sk]===v); b.onclick=()=>{ E.size[sk]=v; syncTools(); }; box.appendChild(b); }); }
   $$('#ePaints .paint').forEach(b=>b.setAttribute('aria-pressed',b.dataset.c===E.color)); $('#eColorName').textContent='現在的顏色：'+cname(E.color);
-  $('#hOutL').hidden=E.tool!=='f'; }
-$$('#eTools button').forEach(b=>b.onclick=()=>{ E.tool=b.dataset.t; syncTools(); hint(); });
-function hint(msg){ $('#eHint').textContent=msg||(E.L&&E.L.steps[E.k].els.length?`這一步有 ${E.L.steps[E.k].els.length} 個東西。${TIPS[E.tool]}`:`這一步還是空的。${TIPS[E.tool]}`); }
+  hSync(); }
+$$('#eTools button').forEach(b=>b.onclick=()=>{ E.tool=b.dataset.t; if (E.tool==='h' && !E.h.c) E.h.c=E.last?{...E.last}:null; syncTools(); hint(); });
+function hint(msg){ if (!msg && E.tool==='h' && E.L){ const a=helperAll(), ok=a.filter(inPaper).length; $('#eHint').textContent=`預覽：${ok} 個${a.length>ok?`（有 ${a.length-ok} 個超出紙張，不會放上去）`:''}。滿意了就按「放到紙上」。`; return; } $('#eHint').textContent=msg||(E.L&&E.L.steps[E.k].els.length?`這一步有 ${E.L.steps[E.k].els.length} 個東西。${TIPS[E.tool]}`:`這一步還是空的。${TIPS[E.tool]}`); }
 function openEditor(L){ E.L=normL(L); E.k=0; E.undo=[]; E.last=null; $('#eTitle').value=E.L.title; $('#eLv').value=E.L.lv; $('#eSub').value=E.L.sub||''; edRefresh(); }
 function pushUndo(){ E.undo.push(JSON.stringify(E.L)); if (E.undo.length>60) E.undo.shift(); $('#eUndo').disabled=false; }
 function edRefresh(keepFields){ const L=E.L; E.k=clamp(E.k,0,L.steps.length-1); EP.load(L); setAspect($('#stEdit'),EP); EP.upTo(E.k); EP.faint=EP.L.steps.slice(E.k+1).flatMap(s=>s.els); E.playing=false;
@@ -938,18 +948,23 @@ function edPoint(e){ const r=EP._rect, cv=$('#cvEdit'); if (!r) return null; con
 const inPaper=p=>E.L.paper==='circle'?Math.hypot(p.x-500,p.y-500)<492:(p.x>=0&&p.y>=0&&p.x<=EP.PW&&p.y<=EP.PH);
 const cvE=$('#cvEdit');
 cvE.addEventListener('pointerdown',e=>{ if (!E.L||E.playing) return; const p=edPoint(e); if (!p||!inPaper(p)) return; e.preventDefault(); try { cvE.setPointerCapture(e.pointerId); } catch(err){} E.last=p;
+  if (E.tool==='h'){ E.h.c={x:p.x,y:p.y}; E.hDrag=true; hint(); return; }
   const st=E.L.steps[E.k];
   if (E.tool==='x'){ let best=-1, bd=1e9; st.els.forEach((el,i)=>{ let d; if (el.k==='p') d=Math.min(...el.pts.map(q=>Math.hypot(q[0]-p.x,q[1]-p.y))); else d=Math.hypot(el.x-p.x,el.y-p.y)-el.s*.6; if (d<bd){ bd=d; best=i; } }); if (best>=0 && bd<40){ pushUndo(); st.els.splice(best,1); edRefresh(true); hint('已擦掉一個。'); } else hint('這一步這裡沒有東西。只能擦掉目前這一步的內容。'); return; }
   E.drag={x0:p.x,y0:p.y,pts:[[p.x,p.y]],dots:E.tool==='s'?[[p.x,p.y]]:[]}; });
-cvE.addEventListener('pointermove',e=>{ const d=E.drag; if (!d) return; const p=edPoint(e); if (!p) return; const l=d.pts.at(-1); if (Math.hypot(p.x-l[0],p.y-l[1])>=4) d.pts.push([p.x,p.y]);
+cvE.addEventListener('pointermove',e=>{ if (E.hDrag){ const p=edPoint(e); if (p){ E.h.c={x:clamp(p.x,0,EP.PW),y:clamp(p.y,0,EP.PH)}; hint(); } return; } const d=E.drag; if (!d) return; const p=edPoint(e); if (!p) return; const l=d.pts.at(-1); if (Math.hypot(p.x-l[0],p.y-l[1])>=4) d.pts.push([p.x,p.y]);
   if (E.tool==='s'){ const ld=d.dots.at(-1), sp=E.size.s*2.6; if (Math.hypot(p.x-ld[0],p.y-ld[1])>=sp && inPaper(p)) d.dots.push([p.x,p.y]); } });
 function endDrag(){ const d=E.drag; if (!d) return; E.drag=null; const st=E.L.steps[E.k]; pushUndo();
   if (E.tool==='f'){ const l=d.pts.at(-1), dx=l[0]-d.x0, dy=l[1]-d.y0, r=Math.hypot(dx,dy)>14?Math.round(Math.atan2(dy,dx)/DEG+90):0; st.els.push(F(d.x0,d.y0,E.color,E.size.f,r)); }
   else if (E.tool==='s') d.dots.forEach(q=>st.els.push(D(q[0],q[1],E.color,E.size.s)));
   else if (E.tool==='p'){ const pts=d.pts.length>1?d.pts:[[d.x0,d.y0],[d.x0+.6,d.y0+.4]]; st.els.push(P(pts,E.size.p)); }
   edRefresh(true); }
-cvE.addEventListener('pointerup',endDrag); cvE.addEventListener('pointercancel',()=>{ E.drag=null; });
-EP.extra=g=>{ const d=E.drag; if (!d||EP.mode!=='edit') return; g.save(); g.globalCompositeOperation='multiply';
+cvE.addEventListener('pointerup',()=>{ if (E.hDrag){ E.hDrag=false; return; } endDrag(); }); cvE.addEventListener('pointercancel',()=>{ E.drag=null; });
+EP.extra=g=>{ if (E.tool==='h' && EP.mode==='edit' && E.L){ const h=E.h, c=hCenter(); g.save(); g.setLineDash([8,8]); g.strokeStyle='rgba(232,85,45,.55)'; g.lineWidth=2.5; g.beginPath();
+    if (h.kind==='ring'||h.kind==='burst') g.arc(c.x,c.y,h.R,0,TAU); else if (h.kind==='row'){ const a=hDirA()*DEG; g.moveTo(c.x-h.R*Math.cos(a),c.y-h.R*Math.sin(a)); g.lineTo(c.x+h.R*Math.cos(a),c.y+h.R*Math.sin(a)); } else { const sp=h.n>1?2*h.R/(h.n-1):0, hh=sp*(h.m-1)/2; g.rect(c.x-h.R,c.y-hh,2*h.R,2*hh); }
+    g.stroke(); g.setLineDash([]); g.globalCompositeOperation='multiply'; helperAll().forEach(e=>paintEl(g,e,1,inPaper(e)?.55:.15)); g.globalCompositeOperation='source-over';
+    g.strokeStyle='#e8552d'; g.lineWidth=4; g.beginPath(); g.moveTo(c.x-22,c.y); g.lineTo(c.x+22,c.y); g.moveTo(c.x,c.y-22); g.lineTo(c.x,c.y+22); g.stroke(); g.fillStyle='#e8552d'; g.beginPath(); g.arc(c.x,c.y,6,0,TAU); g.fill(); g.restore(); return; }
+  const d=E.drag; if (!d||EP.mode!=='edit') return; g.save(); g.globalCompositeOperation='multiply';
   if (E.tool==='f'){ const l=d.pts.at(-1), dx=l[0]-d.x0, dy=l[1]-d.y0, r=Math.hypot(dx,dy)>14?Math.atan2(dy,dx)/DEG+90:0; paintEl(g,{k:'f',x:d.x0,y:d.y0,c:E.color,s:E.size.f,r,v:0},1,.6); g.restore(); if (Math.hypot(dx,dy)>14){ g.strokeStyle='#e8552d'; g.lineWidth=3; g.beginPath(); g.moveTo(d.x0,d.y0); g.lineTo(l[0],l[1]); g.stroke(); } return; }
   if (E.tool==='s') d.dots.forEach(q=>paintEl(g,{k:'s',x:q[0],y:q[1],c:E.color,s:E.size.s,v:0},1,.7));
   if (E.tool==='p' && d.pts.length>1) paintEl(g,{k:'p',pts:d.pts,w:E.size.p},1,.8);
@@ -970,15 +985,35 @@ $('#eTitle').oninput=e=>{ E.L.title=e.target.value; lsSet('fsart.draft',E.L); };
 $('#eSub').oninput=e=>{ E.L.sub=e.target.value; lsSet('fsart.draft',E.L); };
 $('#eLv').onchange=e=>{ E.L.lv=e.target.value; lsSet('fsart.draft',E.L); };
 $('#eStepPlay').onclick=()=>{ if (!E.L.steps[E.k].els.length){ toast('這一步還是空的'); return; } EP.faint=[]; EP.reset(E.k); EP.mode='play'; EP.hl=true; E.playing=true; E.back=0; };
-/* 排列小幫手 */
-const hSync=()=>{ $('#hNV').textContent=$('#hN').value+' 個'; $('#hRV').textContent=$('#hR').value; }; $('#hN').oninput=hSync; $('#hR').oninput=hSync; hSync();
-$('#hAdd').onclick=()=>{ if (E.tool==='x'||E.tool==='p'){ toast('請先選「指紋」或「棉花棒」'); return; } const n=+$('#hN').value, R=+$('#hR').value, kind=$('#hShape').value, c0=E.last||{x:EP.PW/2,y:EP.PH/2}, out=$('#hOut').checked, alt=$('#hAlt').checked;
-  const col=i=>alt&&i%2?E.prevColor:E.color, mkEl=(x,y,i,a)=>E.tool==='f'?F(x,y,col(i),E.size.f,a!=null&&out?a+90:0):D(x,y,col(i),E.size.s), els=[];
-  if (kind==='ring') ring(c0.x,c0.y,R,n).forEach(p=>els.push(mkEl(p.x,p.y,p.i,p.a)));
-  else if (kind==='row') for (let i=0;i<n;i++) els.push(mkEl(c0.x-R+(n>1?2*R*i/(n-1):R),c0.y,i,null));
-  else if (kind==='grid'){ const c=Math.ceil(Math.sqrt(n)), r=Math.ceil(n/c); let i=0; for (let y=0;y<r;y++) for (let x=0;x<c&&i<n;x++,i++) els.push(mkEl(c0.x-R+(c>1?2*R*x/(c-1):R),c0.y-R+(r>1?2*R*y/(r-1):R),i,null)); }
-  else { const spokes=Math.max(4,Math.min(16,Math.round(n/3))), per=Math.max(1,Math.round(n/spokes)); ring(c0.x,c0.y,0,spokes).forEach(p=>{ for (let j=1;j<=per;j++){ const d=R*j/per; els.push(mkEl(c0.x+d*Math.cos(p.a*DEG),c0.y+d*Math.sin(p.a*DEG),p.i,p.a)); } }); }
-  const ok=els.filter(e=>inPaper(e)); if (!ok.length){ toast('排在紙的外面了，請先在紙上點一下當中心'); return; } pushUndo(); E.L.steps[E.k].els.push(...ok); edRefresh(true); hint(`已加入 ${ok.length} 個。`); };
+/* 排列：先看預覽再放 */
+const PCM={sq:15,circle:15,a4:21};
+const cmTxt=v=>(v*PCM[E.L?E.L.paper:'sq']/1000).toFixed(1);
+const HDEF={ring:{n:8,R:150},row:{n:6,R:260},grid:{n:4,m:3,R:220},burst:{n:8,m:3,R:200}};
+const hCenter=()=>E.h.c||{x:EP.PW/2,y:EP.PH/2};
+const hDirA=()=>({h:0,v:90,d:-35})[E.h.dir];
+function helperAll(){ const h=E.h, c=hCenter(), col=i=>h.alt&&i%2?h.c2:E.color, sz=E.size[h.with], out=[];
+  const mk=(x,y,i,a)=>h.with==='f'?F(x,y,col(i),sz,a!=null&&h.out?a+90:0):D(x,y,col(i),sz);
+  if (h.kind==='ring') ring(c.x,c.y,h.R,h.n).forEach(p=>out.push(mk(p.x,p.y,p.i,p.a)));
+  else if (h.kind==='row'){ const a=hDirA()*DEG; for (let i=0;i<h.n;i++){ const t=h.n>1?-h.R+2*h.R*i/(h.n-1):0; out.push(mk(c.x+t*Math.cos(a),c.y+t*Math.sin(a),i,null)); } }
+  else if (h.kind==='grid'){ const sp=h.n>1?2*h.R/(h.n-1):0; for (let y=0;y<h.m;y++) for (let x=0;x<h.n;x++) out.push(mk(c.x-h.R+sp*x,c.y-sp*(h.m-1)/2+sp*y,x+y,null)); }
+  else ring(c.x,c.y,0,h.n).forEach(p=>{ for (let j=1;j<=h.m;j++){ const d=h.R*j/h.m; out.push(mk(c.x+d*Math.cos(p.a*DEG),c.y+d*Math.sin(p.a*DEG),p.i,p.a)); } });
+  return out; }
+function hSync(){ const h=E.h; if (!$('#hN')) return;
+  [['#hWith',h.with],['#hKind',h.kind],['#hDir',h.dir]].forEach(([id,v])=>$$(id+' button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===v)));
+  const L={ring:['一圈幾個','','圓圈大小'],row:['一排幾個','','排多長'],grid:['橫的幾個','直的幾排','格子多寬'],burst:['幾條光芒','每條幾個','放射多遠']}[h.kind];
+  const NMAX={ring:36,row:20,grid:10,burst:16}[h.kind]; $('#hN').max=NMAX; $('#hN').min=h.kind==='grid'?1:2; $('#hM').max=h.kind==='grid'?10:8;
+  $('#hNL').textContent=L[0]; $('#hML').textContent=L[1]; $('#hRL').textContent=L[2]; $('#hN').value=h.n; $('#hM').value=h.m; $('#hR').value=h.R;
+  $('#hNV').textContent=h.n+(h.kind==='burst'?' 條':' 個'); $('#hMV').textContent=h.m+(h.kind==='grid'?' 排':' 個'); $('#hRV').textContent=(h.kind==='ring'||h.kind==='burst'?'直徑約 ':'約 ')+cmTxt(2*h.R)+' 公分';
+  $('#hMBox').hidden=!(h.kind==='grid'||h.kind==='burst'); $('#hDirBox').hidden=h.kind!=='row'; $('#hOutL').hidden=h.with!=='f'||!(h.kind==='ring'||h.kind==='burst'); $('#hOut').checked=h.out; $('#hAlt').checked=h.alt; $('#hC2Box').hidden=!h.alt;
+  $$('#hC2 .paint').forEach(b=>b.setAttribute('aria-pressed',b.dataset.c===h.c2));
+  $('#hAdd').textContent=E.L?`✓ 放到紙上（${helperAll().filter(inPaper).length} 個）`:'✓ 放到紙上'; if (E.tool==='h' && E.L) hint(); }
+PAINTS.forEach(([c,n])=>{ const b=document.createElement('button'); b.className='paint'; b.style.background=c; b.title=n; b.setAttribute('aria-label','第二色：'+n); b.dataset.c=c; b.onclick=()=>{ E.h.c2=c; hSync(); }; $('#hC2').appendChild(b); });
+[['#hWith','with'],['#hDir','dir']].forEach(([id,k])=>$$(id+' button').forEach(b=>b.onclick=()=>{ E.h[k]=b.dataset.v; syncTools(); }));
+$$('#hKind button').forEach(b=>b.onclick=()=>{ E.h.kind=b.dataset.v; Object.assign(E.h,{m:3},HDEF[b.dataset.v]); hSync(); });
+$('#hN').oninput=e=>{ E.h.n=+e.target.value; hSync(); }; $('#hM').oninput=e=>{ E.h.m=+e.target.value; hSync(); }; $('#hR').oninput=e=>{ E.h.R=+e.target.value; hSync(); };
+$('#hOut').onchange=e=>{ E.h.out=e.target.checked; hSync(); }; $('#hAlt').onchange=e=>{ E.h.alt=e.target.checked; if (E.h.alt && E.h.c2===E.color) E.h.c2=E.prevColor!==E.color?E.prevColor:GOLD; hSync(); };
+$('#hCenter').onclick=()=>{ E.h.c=null; hSync(); };
+$('#hAdd').onclick=()=>{ const ok=helperAll().filter(inPaper); if (!ok.length){ toast('全部都在紙的外面，請在紙上點一下換位置'); return; } pushUndo(); E.L.steps[E.k].els.push(...ok); edRefresh(true); hint(`已放上 ${ok.length} 個。可以換顏色、把大小調大，再放一圈。`); };
 /* 教案管理 */
 ['sq','circle','a4'].forEach(p=>{ const g=document.createElement('optgroup'); g.label=PAPERS[p].n; LESSONS.filter(l=>l.paper===p).forEach(L=>{ const o=document.createElement('option'); o.value=L.id; o.textContent=`${L.title}（${L.lv}）`; g.appendChild(o); }); $('#eFrom').appendChild(g); });
 $('#eFrom').onchange=e=>{ const L=getLesson(e.target.value); e.target.value=''; if (!L) return; const c=clone(L); c.id='mine-'+Date.now(); c.title=L.title+'（我的版本）'; openEditor(c); toast('已複製範例，可以直接修改'); };
