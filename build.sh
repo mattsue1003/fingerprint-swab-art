@@ -1,6 +1,6 @@
 #!/bin/sh
-# 由 ../蓋印章圖樣生成器.html 產生 GitHub Pages 用的 index.html
-SRC="$(dirname "$0")/../蓋印章圖樣生成器.html"
+# 由 ../指紋棉花棒創作.html 產生 GitHub Pages 用的 index.html
+SRC="$(dirname "$0")/../指紋棉花棒創作.html"
 OUT="$(dirname "$0")/index.html"
 {
   printf '%s\n' '<!doctype html>' '<html lang="zh-Hant">' '<head>' '<meta charset="utf-8">' \
